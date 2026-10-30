@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenCode · cursor del agente</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 48px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: #010409;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #2f81f7; }
+  .bar strong { font-size: 13px; letter-spacing: .02em; }
+  .bar span { color: var(--muted); font-size: 12px; }
+  .address {
+    flex: 1;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 56px 24px; }
+  .eyebrow { color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  h1 { margin: 10px 0 8px; font-size: 28px; letter-spacing: -.02em; }
+  .lead { margin: 0 0 36px; color: var(--muted); font-size: 15px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+  button {
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--text);
+    padding: 12px 16px;
+    font: inherit;
+    font-weight: 550;
+    cursor: default;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  button:hover { border-color: #58a6ff; }
+  button.active { background: #1f6feb; border-color: #58a6ff; transform: translateY(1px); }
+  .log {
+    margin-top: 32px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(22, 27, 34, .7);
+    color: var(--muted);
+    font-size: 13px;
+    min-height: 48px;
+  }
+  .log b { color: var(--text); font-weight: 550; }
+  .hint { margin-top: 28px; color: #6e7681; font-size: 12px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .badge i { width: 6px; height: 6px; border-radius: 50%; background: #3fb950; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="dot"></div>
+    <strong>OpenCode</strong>
+    <span>agente</span>
+    <div class="address">file:///home/silver/opencode-cursor-demo.html</div>
+    <div class="badge"><i></i> demo local</div>
+  </div>
+  <main>
+    <div class="eyebrow">Navegador integrado</div>
+    <h1>Cursor del agente</h1>
+    <p class="lead">Así se verá cuando el agente haga click, hover o complete un campo. El puntero se mueve, hace un ripple al hacer click y se desvanece después de un momento.</p>
+    <div class="row">
+      <button data-label="Buscar en el repo">Buscar en el repo</button>
+      <button data-label="Ejecutar tests">Ejecutar tests</button>
+      <button data-label="Crear commit">Crear commit</button>
+    </div>
+    <div class="log" id="log"><b>Esperando la primera acción…</b></div>
+    <p class="hint">Demo local · el puntero se dibuja dentro de la página, en un shadow root cerrado, con <code>pointer-events: none</code>.</p>
+  </main>
+
+<script>
+(() => {
+  const host = document.createElement("div")
+  host.setAttribute("aria-hidden", "true")
+  host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none;contain:layout style;"
+  const shadow = host.attachShadow({ mode: "closed" })
+  const pointer = document.createElement("div")
+  pointer.style.cssText = "position:absolute;left:0;top:0;width:18px;height:22px;background:#fff;border:1.5px solid #111;clip-path:polygon(0 0,100% 45%,42% 55%,22% 100%);filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));transform-origin:0 0;will-change:transform,opacity;opacity:0;"
+  shadow.appendChild(pointer)
+  document.documentElement.appendChild(host)
+
+  let moved = false
+  let timer = 0
+  function move(x, y, press) {
+    clearTimeout(timer)
+    pointer.style.opacity = "1"
+    pointer.style.transform = "translate(" + x + "px," + y + "px)"
+    if (!moved) {
+      moved = true
+      requestAnimationFrame(() => {
+        pointer.style.transition = "transform .22s cubic-bezier(.22,1,.36,1),opacity .15s"
+      })
+    }
+    if (press) {
+      const ring = document.createElement("div")
+      ring.style.cssText = "position:absolute;left:" + x + "px;top:" + y + "px;width:10px;height:10px;margin:-5px 0 0 -5px;border:2px solid #3b82f6;border-radius:50%;pointer-events:none;"
+      shadow.appendChild(ring)
+      ring.animate(
+        [{ transform: "scale(.35)", opacity: 1 }, { transform: "scale(2.2)", opacity: 0 }],
+        { duration: 420, easing: "ease-out" },
+      ).onfinish = () => ring.remove()
+    }
+    timer = setTimeout(() => { pointer.style.opacity = "0" }, 1400)
+  }
+
+  const buttons = Array.from(document.querySelectorAll("button"))
+  const log = document.getElementById("log")
+  let index = 0
+
+  function step() {
+    const button = buttons[index % buttons.length]
+    const rect = button.getBoundingClientRect()
+    const x = rect.x + rect.width / 2
+    const y = rect.y + rect.height / 2
+    move(x, y, true)
+    log.innerHTML = "<b>El agente hace click en:</b> " + button.dataset.label
+    button.classList.add("active")
+    setTimeout(() => button.classList.remove("active"), 260)
+    button.click()
+    index++
+    setTimeout(step, 1500)
+  }
+
+  setTimeout(step, 700)
+})()
+</script>
+</body>
+</html>
